@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Header } from "@/components/header"
@@ -48,12 +48,36 @@ const scenarios = [
 export default function DashboardPage() {
   const router = useRouter()
   const { user, logout } = useAuth()
-  const [stats] = useState({
-    simulations: 12,
-    ecosystemHealth: 82,
-    avgSpeciesCount: 4200,
-    totalMicrobes: 18500,
+  const [stats, setStats] = useState({
+    simulations: 0,
+    ecosystemHealth: 0,
+    avgSpeciesCount: 0,
+    totalMicrobes: 0,
   })
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const { apiClient } = await import("@/lib/api-client")
+        const dashboardStats = await apiClient.getDashboardStats()
+        setStats({
+          simulations: dashboardStats.total_simulations,
+          ecosystemHealth: dashboardStats.average_ecosystem_health,
+          avgSpeciesCount: Math.round(dashboardStats.total_microbe_populations / Math.max(dashboardStats.total_simulations, 1)),
+          totalMicrobes: dashboardStats.total_microbe_populations,
+        })
+      } catch (error) {
+        console.error("Failed to fetch dashboard stats:", error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    if (user) {
+      fetchStats()
+    }
+  }, [user])
 
   const handleLogout = () => {
     logout()

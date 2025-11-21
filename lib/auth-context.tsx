@@ -3,9 +3,10 @@
 import type React from "react"
 
 import { createContext, useContext, useState, useEffect } from "react"
+import { apiClient } from "./api-client"
 
 interface User {
-  id: string
+  id: number
   email: string
   name?: string
 }
@@ -25,39 +26,53 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    // Check localStorage for user data on mount
-    const userData = localStorage.getItem("oceanome_user")
-    if (userData) {
-      try {
-        setUser(JSON.parse(userData))
-      } catch (error) {
-        console.error("Failed to parse user data:", error)
-      }
+    // Check if user is already logged in
+    const token = localStorage.getItem("access_token")
+    if (token) {
+      apiClient.setToken(token)
+      // Fetch current user data
+      apiClient.getCurrentUser()
+        .then(userData => {
+          setUser(userData)
+          setIsLoading(false)
+        })
+        .catch(error => {
+          console.error("Failed to fetch user data:", error)
+          // Token might be expired
+          apiClient.logout()
+          setIsLoading(false)
+        })
+    } else {
+      setIsLoading(false)
     }
-    setIsLoading(false)
   }, [])
 
   const login = async (email: string, password: string) => {
-    const userData: User = {
-      id: Math.random().toString(36).substr(2, 9),
-      email,
+    try {
+      await apiClient.login(email, password)
+      const userData = await apiClient.getCurrentUser()
+      setUser(userData)
+    } catch (error) {
+      console.error("Login failed:", error)
+      throw error
     }
-    setUser(userData)
-    localStorage.setItem("oceanome_user", JSON.stringify(userData))
   }
 
   const signup = async (email: string, password: string, name: string) => {
-    const userData: User = {
-      id: Math.random().toString(36).substr(2, 9),
-      email,
-      name,
+    try {
+      const userData = await apiClient.signup(email, password, name)
+      // Auto-login after signup
+      await apiClient.login(email, password)
+      const fullUserData = await apiClient.getCurrentUser()
+      setUser(fullUserData)
+    } catch (error) {
+      console.error("Signup failed:", error)
+      throw error
     }
-    setUser(userData)
-    localStorage.setItem("oceanome_user", JSON.stringify(userData))
   }
 
   const logout = () => {
-    localStorage.removeItem("oceanome_user")
+    apiClient.logout()
     setUser(null)
   }
 
