@@ -6,21 +6,66 @@ import { SimulationControls } from "@/components/simulation-controls"
 import { DataVisualization } from "@/components/data-visualization"
 import { StatCard } from "@/components/stat-card"
 import { useAuth } from "@/lib/auth-context"
-import { SimulationEngine, type SimulationState } from "@/lib/simulation-engine"
+import { apiClient } from "@/lib/api-client"
 import { Button } from "@/components/ui/button"
 import { Download, Share2 } from "lucide-react"
+
+interface SimulationState {
+  id?: number
+  temperature: number
+  nutrients: number
+  light: number
+  salinity: number
+  week: number
+  phytoplankton: number
+  zooplankton: number
+  bacteria: number
+  carbon_sequestration_rate: number
+  biodiversity_index: number
+  ecosystem_health_score: number
+  history: any[]
+}
 
 export default function ActionLabPage() {
   const { user } = useAuth()
   const [isRunning, setIsRunning] = useState(false)
   const [state, setState] = useState<SimulationState | null>(null)
-  const engineRef = useRef<SimulationEngine>(new SimulationEngine())
+  const [simulationId, setSimulationId] = useState<number | null>(null)
   const animationRef = useRef<NodeJS.Timeout | null>(null)
 
   // Initialize simulation
   useEffect(() => {
-    setState(engineRef.current.getState())
-  }, [])
+    const initSimulation = async () => {
+      try {
+        const sim = await apiClient.createSimulation({
+          name: "Action Lab Simulation",
+          description: "Interactive simulation from Action Lab",
+        })
+        setSimulationId(sim.id)
+        setState({
+          id: sim.id,
+          temperature: sim.temperature,
+          nutrients: sim.nutrients,
+          light: sim.light,
+          salinity: sim.salinity,
+          week: sim.week,
+          phytoplankton: sim.phytoplankton,
+          zooplankton: sim.zooplankton,
+          bacteria: sim.bacteria,
+          carbon_sequestration_rate: sim.carbon_sequestration_rate,
+          biodiversity_index: sim.biodiversity_index,
+          ecosystem_health_score: sim.ecosystem_health_score,
+          history: [],
+        })
+      } catch (error) {
+        console.error("Failed to initialize simulation:", error)
+      }
+    }
+
+    if (user) {
+      initSimulation()
+    }
+  }, [user])
 
   const handlePlay = () => {
     setIsRunning(true)
@@ -30,25 +75,71 @@ export default function ActionLabPage() {
     setIsRunning(false)
   }
 
-  const handleReset = () => {
+  const handleReset = async () => {
     setIsRunning(false)
-    engineRef.current.reset()
-    setState(engineRef.current.getState())
+    if (!simulationId) return
+    
+    try {
+      const sim = await apiClient.resetSimulation(simulationId)
+      setState({
+        ...state!,
+        week: sim.week,
+        phytoplankton: sim.phytoplankton,
+        zooplankton: sim.zooplankton,
+        bacteria: sim.bacteria,
+        history: [],
+      })
+    } catch (error) {
+      console.error("Failed to reset simulation:", error)
+    }
   }
 
-  const handleParameterChange = (params: {
+  const handleParameterChange = async (params: {
     temperature?: number
     nutrients?: number
     light?: number
     salinity?: number
   }) => {
-    engineRef.current.updateParameters(params)
-    setState({ ...engineRef.current.getState() })
+    if (!simulationId || !state) return
+    
+    try {
+      const sim = await apiClient.updateSimulation(simulationId, params)
+      setState({
+        ...state,
+        temperature: sim.temperature,
+        nutrients: sim.nutrients,
+        light: sim.light,
+        salinity: sim.salinity,
+      })
+    } catch (error) {
+      console.error("Failed to update parameters:", error)
+    }
   }
 
-  const handleStep = () => {
-    engineRef.current.step()
-    setState({ ...engineRef.current.getState() })
+  const handleStep = async () => {
+    if (!simulationId) return
+    
+    try {
+      const sim = await apiClient.stepSimulation(simulationId, 1)
+      const fullSim = await apiClient.getSimulation(simulationId)
+      setState({
+        id: sim.id,
+        temperature: sim.temperature,
+        nutrients: sim.nutrients,
+        light: sim.light,
+        salinity: sim.salinity,
+        week: sim.week,
+        phytoplankton: sim.phytoplankton,
+        zooplankton: sim.zooplankton,
+        bacteria: sim.bacteria,
+        carbon_sequestration_rate: sim.carbon_sequestration_rate,
+        biodiversity_index: sim.biodiversity_index,
+        ecosystem_health_score: sim.ecosystem_health_score,
+        history: fullSim.history || [],
+      })
+    } catch (error) {
+      console.error("Failed to step simulation:", error)
+    }
   }
 
   // Main simulation loop
@@ -60,24 +151,23 @@ export default function ActionLabPage() {
       return
     }
 
-    animationRef.current = setInterval(() => {
-      engineRef.current.step()
-      setState({ ...engineRef.current.getState() })
-    }, 500)
+    animationRef.current = setInterval(async () => {
+      await handleStep()
+    }, 1000)
 
     return () => {
       if (animationRef.current) {
         clearInterval(animationRef.current)
       }
     }
-  }, [isRunning])
+  }, [isRunning, simulationId])
 
   if (!state) {
     return <div className="flex items-center justify-center min-h-screen">Loading simulation...</div>
   }
 
   // Prepare chart data
-  const chartData = state.history.map((s) => ({
+  const chartData = (state?.history || []).map((s: any) => ({
     name: `Week ${s.week}`,
     phytoplankton: s.phytoplankton,
     zooplankton: s.zooplankton,
@@ -129,7 +219,7 @@ export default function ActionLabPage() {
               <StatCard label="Week" value={state.week} description="Current simulation time" />
               <StatCard
                 label="Ecosystem Score"
-                value={Math.round((state.phytoplankton * 0.3 + state.zooplankton * 0.4 + state.bacteria * 0.3) / 30)}
+                value={Math.round(state.ecosystem_health_score)}
                 unit="/100"
                 description="Overall health index"
               />
