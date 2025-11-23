@@ -1,260 +1,315 @@
-# BlueMind Ocean Restoration Platform - Backend API
+# BlueMind Ocean Restoration Platform - Backend
 
-## 🌊 Overview
+## Overview
 
-BlueMind is an AI-powered platform for ocean microbiome monitoring and restoration. This backend provides:
+This is the backend API for BlueMind, an AI-powered ocean microbiome monitoring and restoration platform built with FastAPI, Python, and SQLAlchemy.
 
-- **Real-time Ocean Simulations**: AI-powered microbiome ecosystem modeling
-- **IoT Sensor Integration**: SmartBuoy sensor data streaming
-- **Carbon Sequestration Predictions**: ML-based environmental forecasting
-- **Bio-Agent Tracking**: Synthetic biology deployment monitoring
-- **Digital Twin Simulations**: Virtual ocean zone modeling
+## Features
 
-## 🚀 Quick Start
+- 🔐 JWT-based authentication and authorization
+- 🌊 Real-time ocean microbiome simulations
+- 📡 IoT sensor data streaming via WebSockets
+- 🤖 AI-powered predictions for carbon sequestration
+- 🧬 Bio-agent deployment tracking
+- 📊 Digital twin simulations
+- 🔬 Microbe population analytics
+- 📈 RESTful API with automatic OpenAPI documentation
+
+## Tech Stack
+
+- **Framework**: FastAPI 0.104.1
+- **Database**: SQLAlchemy 2.0.23 with SQLite/PostgreSQL support
+- **Authentication**: JWT with python-jose
+- **Password Hashing**: Bcrypt
+- **WebSockets**: Built-in FastAPI WebSocket support
+- **Data Science**: NumPy, Pandas, Scikit-learn
+- **Server**: Uvicorn with async support
+
+## Getting Started
 
 ### Prerequisites
 
-- Python 3.9 or higher
-- pip or pipenv
+- Python >= 3.9
+- pip or poetry
 
 ### Installation
 
-1. **Install dependencies**:
-   ```bash
-   pip install -r requirements.txt
+1. Navigate to the backend directory:
+```bash
+cd backend
+```
+
+2. Create a virtual environment:
+```bash
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+```
+
+3. Install dependencies:
+```bash
+pip install -r requirements.txt
+```
+
+4. Create a `.env` file based on `.env.example`:
+```bash
+cp .env.example .env
+```
+
+5. Update the `.env` file with your configuration:
+```env
+SECRET_KEY=your-secret-key-here
+DEBUG=True
+DATABASE_URL=sqlite+aiosqlite:///./bluemind.db
+```
+
+### Development
+
+Run the development server:
+
+```bash
+# Using Python directly
+python -m app.main
+
+# Or using Uvicorn
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+The API will be available at:
+- API: http://localhost:8000
+- Interactive Docs: http://localhost:8000/docs
+- Alternative Docs: http://localhost:8000/redoc
+
+### Testing
+
+Run tests:
+
+```bash
+pytest
+```
+
+Run test with the provided test script:
+
+```bash
+python test_api.py
+```
+
+## Deployment on Render
+
+### Prerequisites
+
+1. A Render account
+2. A GitHub repository with your code
+3. A PostgreSQL database (recommended for production)
+
+### Option 1: Using Render Dashboard
+
+1. Create a new **Web Service** on Render
+2. Connect your GitHub repository
+3. Configure the service:
+   - **Name**: `bluemind-backend`
+   - **Root Directory**: `backend`
+   - **Environment**: `Python 3`
+   - **Build Command**: `pip install -r requirements.txt`
+   - **Start Command**: `./start_render.sh` or `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+
+4. Add Environment Variables:
+   - `SECRET_KEY`: A secure random string (generate with: `openssl rand -hex 32`)
+   - `DEBUG`: `False`
+   - `ENVIRONMENT`: `production`
+   - `DATABASE_URL`: Your PostgreSQL connection string
+   - `ALLOWED_ORIGINS`: Your frontend URL (e.g., `https://bluemind-frontend.onrender.com`)
+   - `PORT`: 10000 (Render will set this automatically)
+
+### Option 2: Using render.yaml
+
+A `render.yaml` file is included in the root of the project for automatic deployment configuration.
+
+### Setting up PostgreSQL on Render
+
+1. Create a new **PostgreSQL** database on Render
+2. Copy the **Internal Database URL**
+3. Add it as `DATABASE_URL` environment variable to your web service
+4. Make sure to use the async PostgreSQL driver format:
+   ```
+   postgresql+asyncpg://user:password@host:5432/dbname
    ```
 
-2. **Set up environment variables**:
-   ```bash
-   cp .env.example .env
-   # Edit .env with your configuration
-   ```
+### Database Migrations
 
-3. **Run the server**:
-   ```bash
-   python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-   ```
+For production with PostgreSQL, you may want to set up Alembic migrations:
 
-4. **Access the API**:
-   - API: http://localhost:8000
-   - Documentation: http://localhost:8000/docs
-   - Alternative docs: http://localhost:8000/redoc
+```bash
+# Initialize Alembic (if not already done)
+alembic init alembic
 
-## 📁 Project Structure
+# Create a migration
+alembic revision --autogenerate -m "Initial migration"
+
+# Apply migrations
+alembic upgrade head
+```
+
+## Project Structure
 
 ```
 backend/
 ├── app/
 │   ├── __init__.py
-│   ├── main.py              # FastAPI application
+│   ├── main.py              # FastAPI application entry point
 │   ├── config.py            # Configuration settings
-│   ├── database.py          # Database connection
+│   ├── database.py          # Database setup and session management
 │   ├── models.py            # SQLAlchemy models
-│   ├── schemas.py           # Pydantic schemas
-│   ├── api/                 # API endpoints
-│   │   ├── auth.py          # Authentication
-│   │   ├── simulations.py   # Simulation management
-│   │   ├── sensors.py       # IoT sensor data
-│   │   ├── dashboard.py     # Dashboard stats
+│   ├── schemas.py           # Pydantic schemas for validation
+│   ├── api/                 # API route handlers
+│   │   ├── auth.py          # Authentication endpoints
+│   │   ├── simulations.py   # Simulation endpoints
+│   │   ├── sensors.py       # Sensor data endpoints
+│   │   ├── dashboard.py     # Dashboard stats endpoints
 │   │   └── websockets.py    # WebSocket endpoints
-│   └── core/                # Business logic
-│       ├── security.py      # Auth & JWT
-│       ├── simulation_engine.py  # Ocean simulation
-│       └── sensor_simulator.py   # IoT data generation
-├── requirements.txt
-├── .env.example
-└── README.md
+│   └── core/                # Core business logic
+│       ├── security.py      # Security utilities
+│       ├── simulation_engine.py  # Simulation logic
+│       └── sensor_simulator.py   # Sensor data generation
+├── requirements.txt         # Python dependencies
+├── .env.example            # Environment variables template
+├── Dockerfile              # Docker configuration
+├── start.sh                # Local startup script
+├── start_render.sh         # Render startup script
+└── test_api.py             # API tests
 ```
 
-## 🔑 API Endpoints
+## API Endpoints
 
 ### Authentication
-
-- `POST /api/v1/auth/signup` - Create new user account
-- `POST /api/v1/auth/login` - Login (OAuth2)
+- `POST /api/v1/auth/signup` - Create a new user account
+- `POST /api/v1/auth/login` - Login (form data)
 - `POST /api/v1/auth/login-json` - Login (JSON)
-- `GET /api/v1/auth/me` - Get current user
+- `GET /api/v1/auth/me` - Get current user info
 
 ### Simulations
-
-- `POST /api/v1/simulations` - Create simulation
 - `GET /api/v1/simulations` - List all simulations
+- `POST /api/v1/simulations` - Create a new simulation
 - `GET /api/v1/simulations/{id}` - Get simulation details
-- `PUT /api/v1/simulations/{id}` - Update parameters
-- `POST /api/v1/simulations/{id}/step` - Advance simulation
-- `POST /api/v1/simulations/{id}/reset` - Reset simulation
-- `POST /api/v1/simulations/{id}/predict` - AI predictions
+- `PUT /api/v1/simulations/{id}` - Update simulation parameters
 - `DELETE /api/v1/simulations/{id}` - Delete simulation
+- `POST /api/v1/simulations/{id}/step` - Advance simulation by time steps
+- `POST /api/v1/simulations/{id}/reset` - Reset simulation
+- `POST /api/v1/simulations/{id}/predict` - AI prediction for future state
 
 ### Sensors
-
-- `POST /api/v1/sensors/zones` - Create sensor zone
-- `GET /api/v1/sensors/zones` - List sensor zones
+- `GET /api/v1/sensors/zones` - List all sensor zones
+- `POST /api/v1/sensors/zones` - Create a new sensor zone
 - `GET /api/v1/sensors/zones/{id}` - Get zone details
-- `GET /api/v1/sensors/zones/{id}/current` - Get current reading
-- `POST /api/v1/sensors/zones/{id}/simulate-event` - Simulate event
 - `DELETE /api/v1/sensors/zones/{id}` - Delete zone
+- `GET /api/v1/sensors/zones/{id}/current` - Get current sensor reading
+- `POST /api/v1/sensors/zones/{id}/simulate-event` - Simulate an environmental event
 
 ### Dashboard
-
 - `GET /api/v1/dashboard/stats` - Get dashboard statistics
 
 ### WebSocket
+- `WS /api/v1/ws/sensors/{zone_id}` - Real-time sensor data stream
 
-- `WS /api/v1/ws/sensors/{zone_id}` - Real-time sensor stream
-- `WS /api/v1/ws/simulation/{id}` - Real-time simulation updates
-- `WS /api/v1/ws/dashboard` - Dashboard updates
+## Environment Variables
 
-## 🧪 Features
+| Variable | Description | Default | Required |
+|----------|-------------|---------|----------|
+| `APP_NAME` | Application name | BlueMind Ocean Restoration API | No |
+| `ENVIRONMENT` | Environment (development/production) | development | No |
+| `DEBUG` | Enable debug mode | False | No |
+| `SECRET_KEY` | JWT secret key | - | Yes |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | Token expiration time | 30 | No |
+| `DATABASE_URL` | Database connection string | sqlite+aiosqlite:///./bluemind.db | No |
+| `ALLOWED_ORIGINS` | CORS allowed origins (comma-separated) | localhost:3000 | Yes |
+| `ENABLE_AI_PREDICTIONS` | Enable AI predictions | True | No |
+| `MODEL_UPDATE_INTERVAL` | Model update interval (seconds) | 300 | No |
+| `SENSOR_UPDATE_INTERVAL` | Sensor update interval (seconds) | 5 | No |
+| `ENABLE_SENSOR_SIMULATION` | Enable sensor simulation | True | No |
+| `PORT` | Server port | 8000 | No |
+| `HOST` | Server host | 0.0.0.0 | No |
 
-### AI-Powered Simulation Engine
+## Security
 
-The simulation engine models ocean microbiome dynamics with:
+### Generating a Secret Key
 
-- Multi-species population dynamics (phytoplankton, zooplankton, bacteria)
-- Environmental parameter interactions (temperature, nutrients, light, salinity, pH, oxygen)
-- Carbon sequestration calculations
-- Biodiversity index computation
-- Ecosystem health scoring
-- Predictive analytics
-
-### IoT Sensor Simulation
-
-SmartBuoy simulators provide realistic ocean monitoring data:
-
-- Diurnal and seasonal patterns
-- Realistic noise and measurement uncertainty
-- Correlated environmental parameters
-- Event simulation (algal blooms, upwelling, storms, pollution)
-
-### Database Schema
-
-- **Users**: Authentication and user management
-- **Simulations**: Ocean ecosystem simulations
-- **SimulationHistory**: Time-series simulation data
-- **SensorZones**: IoT sensor locations
-- **SensorReadings**: Time-series sensor data
-- **BioAgents**: Engineered microbe specifications
-- **Deployments**: Bio-agent deployment tracking
-
-## 🔐 Security
-
-- JWT-based authentication
-- Password hashing with bcrypt
-- CORS configuration
-- Rate limiting (recommended in production)
-
-## 🌐 Environment Variables
-
-```env
-# Application
-APP_NAME=BlueMind Ocean Restoration API
-DEBUG=True
-API_VERSION=v1
-
-# Security
-SECRET_KEY=your-secret-key
-ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=30
-
-# Database
-DATABASE_URL=sqlite+aiosqlite:///./bluemind.db
-
-# CORS
-ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3001
-
-# AI/IoT
-ENABLE_AI_PREDICTIONS=True
-SENSOR_UPDATE_INTERVAL=5
-```
-
-## 📊 Database
-
-The project uses SQLAlchemy with async support. By default, it uses SQLite for development.
-
-### Initialize Database
-
-The database is automatically initialized on startup.
-
-### Migrations (Optional)
-
-For production, use Alembic for database migrations:
+Generate a secure secret key for production:
 
 ```bash
-# Initialize Alembic
-alembic init alembic
+# Using OpenSSL
+openssl rand -hex 32
 
-# Create migration
-alembic revision --autogenerate -m "Initial migration"
-
-# Apply migration
-alembic upgrade head
+# Using Python
+python -c "import secrets; print(secrets.token_hex(32))"
 ```
 
-## 🧬 Core Algorithms
+### CORS Configuration
 
-### Carbon Sequestration Model
+Update `ALLOWED_ORIGINS` in your `.env` file to include your frontend URL:
 
-```python
-# Phytoplankton carbon fixation
-carbon_fixed = phytoplankton_biomass * 0.001  # kg C per week
-
-# Export to deep ocean (15%)
-export_efficiency = 0.15
-
-# Net sequestration (after remineralization)
-net_carbon = carbon_fixed * export_efficiency * 0.4
-
-# Convert C to CO2
-co2_sequestered = net_carbon * (44/12)
+```env
+ALLOWED_ORIGINS=https://your-frontend.onrender.com,http://localhost:3000
 ```
 
-### Biodiversity Index
+## Database
 
-Uses Shannon diversity index normalized to 0-1 scale:
+### SQLite (Development)
 
-```python
-H' = -Σ(pi * ln(pi))
-normalized = H' / ln(n_species)
+By default, the application uses SQLite for local development:
+
+```env
+DATABASE_URL=sqlite+aiosqlite:///./bluemind.db
 ```
 
-### Ecosystem Health Score
+### PostgreSQL (Production - Recommended)
 
-Weighted combination of:
-- Population balance (50%)
-- Environmental conditions (30%)
-- Biodiversity (20%)
+For production, use PostgreSQL with the async driver:
 
-## 🚢 Deployment
-
-### Docker (Recommended)
-
-```dockerfile
-FROM python:3.9-slim
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install -r requirements.txt
-COPY . .
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+```env
+DATABASE_URL=postgresql+asyncpg://user:password@host:5432/dbname
 ```
 
-### Production Considerations
+## Monitoring and Logging
 
-1. **Database**: Use PostgreSQL instead of SQLite
-2. **Environment**: Set `DEBUG=False`
-3. **Security**: Generate strong `SECRET_KEY`
-4. **HTTPS**: Use nginx or Caddy as reverse proxy
-5. **Monitoring**: Add logging and error tracking
-6. **Scaling**: Use Gunicorn with multiple workers
+The application includes:
+- Health check endpoint: `GET /health`
+- Root endpoint: `GET /`
+- Automatic request logging
+- Error handling with detailed error messages
 
-## 📝 License
+## Troubleshooting
 
-MIT License - See LICENSE file for details
+### Database Connection Issues
 
-## 👥 Contributors
+If you encounter database connection issues:
+1. Verify your `DATABASE_URL` is correct
+2. For PostgreSQL, ensure the database exists
+3. Check network connectivity to the database
 
-Built for the BlueMind Ocean Restoration Initiative
+### CORS Errors
 
-## 📧 Support
+If you encounter CORS errors:
+1. Add your frontend URL to `ALLOWED_ORIGINS`
+2. Ensure the URL includes the protocol (http:// or https://)
+3. Restart the server after updating environment variables
+
+### Port Already in Use
+
+If port 8000 is already in use:
+```bash
+# Find the process using the port
+lsof -i :8000
+
+# Kill the process
+kill -9 <PID>
+
+# Or use a different port
+PORT=8001 uvicorn app.main:app
+```
+
+## License
+
+MIT
+
+## Support
 
 For issues and questions, please open an issue on GitHub.
