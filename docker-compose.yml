@@ -1,45 +1,59 @@
 version: '3.8'
 
 services:
-  # Backend API
+  # Backend API Service
   backend:
-    build: ./backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     container_name: bluemind-backend
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=sqlite+aiosqlite:////app/data/bluemind.db
-      - SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-in-production}
-      - ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3001
+      - DEBUG=True
+      - SECRET_KEY=dev-secret-key-for-docker
+      - DATABASE_URL=sqlite+aiosqlite:///./bluemind.db
+      - ALLOWED_ORIGINS=http://localhost:3000,http://frontend:3000
+      - ENABLE_AI_PREDICTIONS=True
+      - ENABLE_SENSOR_SIMULATION=True
     volumes:
       - ./backend:/app
-      - backend-data:/app/data
+      - backend-db:/app/data
+    networks:
+      - bluemind-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health')"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
 
-  # Frontend (optional - for production)
-  # frontend:
-  #   build:
-  #     context: .
-  #     dockerfile: Dockerfile.frontend
-  #   container_name: bluemind-frontend
-  #   ports:
-  #     - "3000:3000"
-  #   environment:
-  #     - NEXT_PUBLIC_API_URL=http://backend:8000/api/v1
-  #   depends_on:
-  #     - backend
-  #   restart: unless-stopped
-
-volumes:
-  backend-data:
-    driver: local
+  # Frontend Web Service
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: bluemind-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    networks:
+      - bluemind-network
+    depends_on:
+      - backend
+    restart: unless-stopped
 
 networks:
-  default:
-    name: bluemind-network
+  bluemind-network:
+    driver: bridge
+
+volumes:
+  backend-db:
+    driver: local
